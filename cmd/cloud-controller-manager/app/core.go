@@ -38,6 +38,11 @@ import (
 	kubefeatures "k8s.io/kubernetes/pkg/features"
 )
 
+
+// Controller Manager:
+//    由 kube-controller-manager 和 cloud-controller-manager 组成，
+//    是 Kubernetes 的大脑，它通过 apiserver 监控整个集群的状态，并确保集群处于预期的工作状态.
+
 func startCloudNodeController(ctx *cloudcontrollerconfig.CompletedConfig, cloud cloudprovider.Interface, stopCh <-chan struct{}) (http.Handler, bool, error) {
 	// Start the CloudNodeController
 	nodeController, err := cloudcontrollers.NewCloudNodeController(

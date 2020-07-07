@@ -47,6 +47,8 @@ type Policy struct {
 }
 
 // PredicatePolicy describes a struct of a predicate policy.
+//
+// 定义 谓词策略 (scheduler在调度 pod时的两个阶段 predicate 和 priority)
 type PredicatePolicy struct {
 	// Identifier of the predicate policy
 	// For a custom predicate, the name can be user-defined
@@ -57,6 +59,8 @@ type PredicatePolicy struct {
 }
 
 // PriorityPolicy describes a struct of a priority policy.
+//
+// 定义 优先级策略 (scheduler在调度 pod时的两个阶段 predicate 和 priority)
 type PriorityPolicy struct {
 	// Identifier of the priority policy
 	// For a custom priority, the name can be user-defined

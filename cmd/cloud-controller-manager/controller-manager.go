@@ -37,6 +37,9 @@ import (
 func main() {
 	rand.Seed(time.Now().UnixNano())
 
+	// Controller Manager:
+	//    由 kube-controller-manager 和 cloud-controller-manager 组成，
+	//    是 Kubernetes 的大脑，它通过 apiserver 监控整个集群的状态，并确保集群处于预期的工作状态.
 	command := app.NewCloudControllerManagerCommand()
 
 	// TODO: once we switch everything over to Cobra commands, we can go back to calling

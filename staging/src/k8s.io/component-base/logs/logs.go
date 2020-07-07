@@ -51,6 +51,8 @@ func (writer KlogWriter) Write(data []byte) (n int, err error) {
 }
 
 // InitLogs initializes logs the way we want for kubernetes.
+//
+// InitLogs: 以我们想要的Kubernetes方式初始化日志.
 func InitLogs() {
 	log.SetOutput(KlogWriter{})
 	log.SetFlags(0)

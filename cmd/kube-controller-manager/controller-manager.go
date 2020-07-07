@@ -31,9 +31,12 @@ import (
 	"k8s.io/kubernetes/cmd/kube-controller-manager/app"
 )
 
+// todo ControllerManager 组件的启动入口
 func main() {
+	// todo 设置全局的 随机种子
 	rand.Seed(time.Now().UnixNano())
 
+	// 初始化 controller-manager cmd 实例
 	command := app.NewControllerManagerCommand()
 
 	// TODO: once we switch everything over to Cobra commands, we can go back to calling

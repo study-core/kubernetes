@@ -44,91 +44,176 @@ import (
 	"k8s.io/kubernetes/pkg/scheduler/framework/plugins/volumezone"
 )
 
+/**
+priorities 策略 选项
+ */
 const (
 	// EqualPriority defines the name of prioritizer function that gives an equal weight of one to all nodes.
+	//
+	// EqualPriority: 将所有节点的优先级设置为 1[默认未使用]
 	EqualPriority = "EqualPriority"
+
 	// MostRequestedPriority defines the name of prioritizer function that gives used nodes higher priority.
+	//
+	// MostRequestedPriority: 尽量调度到已经使用过的 Node 上，特别适用于 cluster-autoscaler[默认未使用]
 	MostRequestedPriority = "MostRequestedPriority"
+
 	// RequestedToCapacityRatioPriority defines the name of RequestedToCapacityRatioPriority.
 	RequestedToCapacityRatioPriority = "RequestedToCapacityRatioPriority"
+
 	// SelectorSpreadPriority defines the name of prioritizer function that spreads pods by minimizing
 	// the number of pods (belonging to the same service or replication controller) on the same node.
+	//
+	// SelectorSpreadPriority: 优先减少节点上属于同一个 Service 或 Replication Controller 的 Pod 数量
 	SelectorSpreadPriority = "SelectorSpreadPriority"
+
 	// ServiceSpreadingPriority is largely replaced by "SelectorSpreadPriority".
+	//
+	// ServiceSpreadingPriority: 尽量将同一个 service 的 Pod 分布到不同节点上，已经被 SelectorSpreadPriority 替代 [默认未使用]
 	ServiceSpreadingPriority = "ServiceSpreadingPriority"
+
 	// InterPodAffinityPriority defines the name of prioritizer function that decides which pods should or
 	// should not be placed in the same topological domain as some other pods.
+	//
+	// InterPodAffinityPriority: 优先将 Pod 调度到相同的拓扑上（如同一个节点、Rack、Zone 等）
 	InterPodAffinityPriority = "InterPodAffinityPriority"
+
 	// LeastRequestedPriority defines the name of prioritizer function that prioritize nodes by least
 	// requested utilization.
+	//
+	// LeastRequestedPriority: 优先调度到请求资源少的节点上
 	LeastRequestedPriority = "LeastRequestedPriority"
+
 	// BalancedResourceAllocation defines the name of prioritizer function that prioritizes nodes
 	// to help achieve balanced resource usage.
+	//
+	// BalancedResourceAllocation: 优先平衡各节点的资源使用
 	BalancedResourceAllocation = "BalancedResourceAllocation"
+
 	// NodePreferAvoidPodsPriority defines the name of prioritizer function that priorities nodes according to
 	// the node annotation "scheduler.alpha.kubernetes.io/preferAvoidPods".
+	//
+	// NodePreferAvoidPodsPriority: alpha.kubernetes.io/preferAvoidPods 字段判断, 权重为 10000，避免其他优先级策略的影响
 	NodePreferAvoidPodsPriority = "NodePreferAvoidPodsPriority"
+
 	// NodeAffinityPriority defines the name of prioritizer function that prioritizes nodes which have labels
 	// matching NodeAffinity.
+	//
+	// NodeAffinityPriority: 优先调度到匹配 NodeAffinity 的节点上
 	NodeAffinityPriority = "NodeAffinityPriority"
+
 	// TaintTolerationPriority defines the name of prioritizer function that prioritizes nodes that marked
 	// with taint which pod can tolerate.
+	//
+	// TaintTolerationPriority: 优先调度到匹配 TaintToleration 的节点上
 	TaintTolerationPriority = "TaintTolerationPriority"
+
 	// ImageLocalityPriority defines the name of prioritizer function that prioritizes nodes that have images
 	// requested by the pod present.
+	//
+	// ImageLocalityPriority: 尽量将使用大镜像的容器调度到已经下拉了该镜像的节点上 [默认未使用]
 	ImageLocalityPriority = "ImageLocalityPriority"
+
 	// ResourceLimitsPriority defines the nodes of prioritizer function ResourceLimitsPriority.
 	ResourceLimitsPriority = "ResourceLimitsPriority"
+
 	// EvenPodsSpreadPriority defines the name of prioritizer function that prioritizes nodes
 	// which have pods and labels matching the incoming pod's topologySpreadConstraints.
 	EvenPodsSpreadPriority = "EvenPodsSpreadPriority"
 )
 
+/**
+predicates 策略 选项
+ */
 const (
 	// MatchInterPodAffinityPred defines the name of predicate MatchInterPodAffinity.
+	//
+	// MatchInterPodAffinity: 检查是否匹配 Pod 的亲和性要求
 	MatchInterPodAffinityPred = "MatchInterPodAffinity"
+
 	// CheckVolumeBindingPred defines the name of predicate CheckVolumeBinding.
 	CheckVolumeBindingPred = "CheckVolumeBinding"
+
 	// GeneralPred defines the name of predicate GeneralPredicates.
+	//
+	// GeneralPredicates: 分为 noncriticalPredicates 和 EssentialPredicates。
+	//					  noncriticalPredicates 中包含 PodFitsResources，EssentialPredicates 中包含
+	//					  PodFitsHost，PodFitsHostPorts 和 PodSelectorMatches。
 	GeneralPred = "GeneralPredicates"
+
 	// HostNamePred defines the name of predicate HostName.
+	//
+	// HostName: 检查 pod.Spec.NodeName 是否与候选节点一致
 	HostNamePred = "HostName"
+
 	// PodFitsHostPortsPred defines the name of predicate PodFitsHostPorts.
+	//
+	// PodFitsHostPorts: 检查是否有 Host Ports 冲突
 	PodFitsHostPortsPred = "PodFitsHostPorts"
+
 	// MatchNodeSelectorPred defines the name of predicate MatchNodeSelector.
+	//
+	// MatchNodeSelector: 检查候选节点的 pod.Spec.NodeSelector 是否匹配
 	MatchNodeSelectorPred = "MatchNodeSelector"
+
 	// PodFitsResourcesPred defines the name of predicate PodFitsResources.
+	//
+	// PodFitsResources: 检查 Node 的资源是否充足，包括允许的 Pod 数量、CPU、内存、GPU 个数以及其他的 OpaqueIntResources
 	PodFitsResourcesPred = "PodFitsResources"
+
 	// NoDiskConflictPred defines the name of predicate NoDiskConflict.
+	//
+	// NoDiskConflict: 检查是否存在 Volume 冲突，仅限于 GCE PD、AWS EBS、Ceph RBD 以及 ISCSI
 	NoDiskConflictPred = "NoDiskConflict"
+
 	// PodToleratesNodeTaintsPred defines the name of predicate PodToleratesNodeTaints.
+	//
+	// PodToleratesNodeTaints: 检查 Pod 是否容忍 Node Taints
 	PodToleratesNodeTaintsPred = "PodToleratesNodeTaints"
+
 	// CheckNodeUnschedulablePred defines the name of predicate CheckNodeUnschedulablePredicate.
 	CheckNodeUnschedulablePred = "CheckNodeUnschedulable"
+
 	// CheckNodeLabelPresencePred defines the name of predicate CheckNodeLabelPresence.
 	CheckNodeLabelPresencePred = "CheckNodeLabelPresence"
+
 	// CheckServiceAffinityPred defines the name of predicate checkServiceAffinity.
 	CheckServiceAffinityPred = "CheckServiceAffinity"
+
 	// MaxEBSVolumeCountPred defines the name of predicate MaxEBSVolumeCount.
 	// DEPRECATED
 	// All cloudprovider specific predicates are deprecated in favour of MaxCSIVolumeCountPred.
+	//
+	// MaxEBSVolumeCount: 检查 AWS EBS Volume 数量是否过多（默认不超过 39）
 	MaxEBSVolumeCountPred = "MaxEBSVolumeCount"
+
 	// MaxGCEPDVolumeCountPred defines the name of predicate MaxGCEPDVolumeCount.
 	// DEPRECATED
 	// All cloudprovider specific predicates are deprecated in favour of MaxCSIVolumeCountPred.
+	//
+	// MaxGCEPDVolumeCount: 检查 GCE PD Volume 数量是否过多（默认不超过 16）
 	MaxGCEPDVolumeCountPred = "MaxGCEPDVolumeCount"
+
 	// MaxAzureDiskVolumeCountPred defines the name of predicate MaxAzureDiskVolumeCount.
 	// DEPRECATED
 	// All cloudprovider specific predicates are deprecated in favour of MaxCSIVolumeCountPred.
+	//
+	// MaxAzureDiskVolumeCount: 检查 Azure Disk Volume 数量是否过多（默认不超过 16）
 	MaxAzureDiskVolumeCountPred = "MaxAzureDiskVolumeCount"
+
 	// MaxCinderVolumeCountPred defines the name of predicate MaxCinderDiskVolumeCount.
 	// DEPRECATED
 	// All cloudprovider specific predicates are deprecated in favour of MaxCSIVolumeCountPred.
 	MaxCinderVolumeCountPred = "MaxCinderVolumeCount"
+
 	// MaxCSIVolumeCountPred defines the predicate that decides how many CSI volumes should be attached.
 	MaxCSIVolumeCountPred = "MaxCSIVolumeCountPred"
+
 	// NoVolumeZoneConflictPred defines the name of predicate NoVolumeZoneConflict.
+	//
+	// NoVolumeZoneConflict: 检查 volume zone 是否冲突
 	NoVolumeZoneConflictPred = "NoVolumeZoneConflict"
+
 	// EvenPodsSpreadPred defines the name of predicate EvenPodsSpread.
 	EvenPodsSpreadPred = "EvenPodsSpread"
 )
@@ -505,7 +590,7 @@ func (lr *LegacyRegistry) ProcessPredicatePolicy(policy config.PredicatePolicy, 
 	validatePredicateOrDie(policy)
 
 	predicateName := policy.Name
-	if policy.Name == "PodFitsPorts" {
+	if policy.Name == "PodFitsPorts" { // PodFitsPorts: 同 PodFitsHostPorts
 		// For compatibility reasons, "PodFitsPorts" as a key is still supported.
 		predicateName = PodFitsHostPortsPred
 	}

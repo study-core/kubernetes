@@ -282,10 +282,13 @@ func Run(c *config.CompletedConfig, stopCh <-chan struct{}) error {
 		WatchDog: electionChecker,
 		Name:     "kube-controller-manager",
 	})
+	// todo 尼玛， 这是什么骚操作 ?? `无法达到` ??
 	panic("unreachable")
 }
 
 // ControllerContext defines the context object for controller
+//
+// 定义了 关于 Controller 的上下文信息
 type ControllerContext struct {
 	// ClientBuilder will provide a client for this controller to use
 	ClientBuilder controller.ControllerClientBuilder
@@ -340,9 +343,16 @@ func (c ControllerContext) IsControllerEnabled(name string) bool {
 // InitFunc is used to launch a particular controller.  It may run additional "should I activate checks".
 // Any error returned will cause the controller process to `Fatal`
 // The bool indicates whether the controller was enabled.
+//
+// todo InitFunc
+// 	    用于启动特定的 Controller。 它可能会运行其他“我应该激活检查”。
+// 	    返回的任何错误都将导致控制器进程“致命”。
+// 	    布尔值指示是否启用了控制器。
 type InitFunc func(ctx ControllerContext) (debuggingHandler http.Handler, enabled bool, err error)
 
 // KnownControllers returns all known controllers's name
+//
+// 返回所有已知的 controller 的 name
 func KnownControllers() []string {
 	ret := sets.StringKeySet(NewControllerInitializers(IncludeCloudLoops))
 
@@ -369,8 +379,18 @@ const (
 
 // NewControllerInitializers is a public map of named controller groups (you can start more than one in an init func)
 // paired to their InitFunc.  This allows for structured downstream composition and subdivision.
+//
+// todo NewControllerInitializers
+// 		是已命名 COntroller 组（您可以在init函数中启动多个）与它们的InitFunc配对的公共映射。
+//		这允许结构化的下游组成和细分。
 func NewControllerInitializers(loopMode ControllerLoopMode) map[string]InitFunc {
+
+	// 收集 所有 COntroller 组件的 map
 	controllers := map[string]InitFunc{}
+
+	// todo 收集所有 启动 各个  Controller 组件的 `startXxx`函数，
+	// todo 这些组件共同 组成了 `kube-controller-manager`
+
 	controllers["endpoint"] = startEndpointController
 	controllers["endpointslice"] = startEndpointSliceController
 	controllers["replicationcontroller"] = startReplicationController
@@ -395,6 +415,7 @@ func NewControllerInitializers(loopMode ControllerLoopMode) map[string]InitFunc 
 	controllers["tokencleaner"] = startTokenCleanerController
 	controllers["nodeipam"] = startNodeIpamController
 	controllers["nodelifecycle"] = startNodeLifecycleController
+
 	if loopMode == IncludeCloudLoops {
 		controllers["service"] = startServiceController
 		controllers["route"] = startRouteController
