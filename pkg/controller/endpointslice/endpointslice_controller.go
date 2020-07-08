@@ -137,6 +137,8 @@ func NewController(podInformer coreinformers.PodInformer,
 }
 
 // Controller manages selector-based service endpoint slices
+//
+// 控制器管理基于选择器的服务端点片
 type Controller struct {
 	client           clientset.Interface
 	eventBroadcaster record.EventBroadcaster

@@ -61,6 +61,8 @@ type CompletedConfig struct {
 }
 
 // Complete fills in any fields not set that are required to have valid data. It's mutating the receiver.
+//
+// 完成填写未设置的任何具有有效数据的字段。 它正在改变接收器
 func (c *Config) Complete() *CompletedConfig {
 	cc := completedConfig{c}
 

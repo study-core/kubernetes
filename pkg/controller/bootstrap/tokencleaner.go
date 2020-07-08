@@ -58,6 +58,8 @@ func DefaultTokenCleanerOptions() TokenCleanerOptions {
 }
 
 // TokenCleaner is a controller that deletes expired tokens
+//
+// 用来 清除过期的 启动引导令牌
 type TokenCleaner struct {
 	tokenSecretNamespace string
 

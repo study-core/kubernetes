@@ -204,12 +204,16 @@ func (le *LeaderElector) Run(ctx context.Context) {
 	}
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
+
+	// TODO 主节点调用 回调函数, 其时 在 ControllerManager中注册的 `启动所有 Controller的临时函数 run函数的指针`
 	go le.config.Callbacks.OnStartedLeading(ctx)
 	le.renew(ctx)
 }
 
 // RunOrDie starts a client with the provided config or panics if the config
 // fails to validate.
+//
+// 如果配置无法通过验证，RunOrDie 将使用提供的配置启动客户端或出现紧急情况
 func RunOrDie(ctx context.Context, lec LeaderElectionConfig) {
 	le, err := NewLeaderElector(lec)
 	if err != nil {

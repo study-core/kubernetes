@@ -71,8 +71,15 @@ const (
 	statusUpdateRetries = 1
 )
 
+// todo ReplicaSet: (RS)
+//		RS是新一代RC，提供同样的高可用能力，
+//		区别主要在于RS后来居上，能支持更多种类的匹配模式。
+//		副本集对象一般不单独使用，而是作为Deployment的理想状态参数使用.
+
 // ReplicaSetController is responsible for synchronizing ReplicaSet objects stored
 // in the system with actual running pods.
+//
+// ReplicaSet Controller: 负责将系统中存储的Replica Set对象与实际运行的Pod进行同步。
 type ReplicaSetController struct {
 	// GroupVersionKind indicates the controller type.
 	// Different instances of this struct may handle different GVKs.

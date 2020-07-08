@@ -75,6 +75,8 @@ type ResourceQuotaControllerOptions struct {
 }
 
 // ResourceQuotaController is responsible for tracking quota usage status in the system
+//
+// ResourceQuotaController: 负责跟踪系统中的配额使用状态
 type ResourceQuotaController struct {
 	// Must have authority to list all resources in the system, and update quota status
 	rqClient corev1client.ResourceQuotasGetter

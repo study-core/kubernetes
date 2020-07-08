@@ -190,6 +190,11 @@ func JitterUntilWithContext(ctx context.Context, f func(context.Context), period
 //
 // This allows clients to avoid converging on periodic behavior. If maxFactor
 // is 0.0, a suggested default value will be chosen.
+//
+// Jitter: [抖动]返回一个时间。  duration <= x <= duration + maxFactor * duration
+//
+// 这使客户可以避免收敛于周期性行为。 如果maxFactor为0.0，将选择建议的默认值。
+//
 func Jitter(duration time.Duration, maxFactor float64) time.Duration {
 	if maxFactor <= 0.0 {
 		maxFactor = 1.0

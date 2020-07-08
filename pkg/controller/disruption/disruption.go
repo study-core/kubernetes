@@ -66,6 +66,7 @@ const DeletionTimeout = 2 * 60 * time.Second
 
 type updater func(*policy.PodDisruptionBudget) error
 
+// 中断 控制器
 type DisruptionController struct {
 	kubeClient clientset.Interface
 	mapper     apimeta.RESTMapper

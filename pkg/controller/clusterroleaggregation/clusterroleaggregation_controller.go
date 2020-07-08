@@ -40,6 +40,8 @@ import (
 )
 
 // ClusterRoleAggregationController is a controller to combine cluster roles
+//
+// ClusterRoleAggregationController: 是用于组合集群角色的控制器
 type ClusterRoleAggregationController struct {
 	clusterRoleClient  rbacclient.ClusterRolesGetter
 	clusterRoleLister  rbaclisters.ClusterRoleLister

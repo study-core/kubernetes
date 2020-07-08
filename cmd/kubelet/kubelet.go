@@ -31,9 +31,21 @@ import (
 	"k8s.io/kubernetes/cmd/kubelet/app"
 )
 
+// 每个Node节点上都运行一个 Kubelet 服务进程，
+// 默认监听 10250 端口，接收并执行 Master 发来的指令，
+// 管理 Pod 及 Pod 中的容器.
+//
+// 每个 Kubelet 进程会在 API Server 上注册所在Node节点的信息，
+// 定期向 Master 节点汇报该节点的资源使用情况，并通过 cAdvisor 监控节点和容器的资源.
+
+// todo kubelet 组件的入口
 func main() {
+
+	// 设置全局的随机种子
 	rand.Seed(time.Now().UnixNano())
 
+
+	// 初始化 kubelet cmd 实例
 	command := app.NewKubeletCommand()
 	logs.InitLogs()
 	defer logs.FlushLogs()

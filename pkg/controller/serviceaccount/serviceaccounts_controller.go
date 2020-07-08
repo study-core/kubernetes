@@ -93,6 +93,8 @@ func NewServiceAccountsController(saInformer coreinformers.ServiceAccountInforme
 }
 
 // ServiceAccountsController manages ServiceAccount objects inside Namespaces
+//
+// Namespaces 中的 ServiceAccounts Controller Manager 服务帐户对象
 type ServiceAccountsController struct {
 	client                  clientset.Interface
 	serviceAccountsToEnsure []v1.ServiceAccount

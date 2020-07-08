@@ -83,8 +83,13 @@ type ControllerLoopMode int
 
 const (
 	// IncludeCloudLoops means the kube-controller-manager include the controller loops that are cloud provider dependent
+	//
+	// todo IncludeCloudLoops 意味着 kube-controller-manager 包括依赖于云提供程序的控制器循环
 	IncludeCloudLoops ControllerLoopMode = iota
+
 	// ExternalLoops means the kube-controller-manager exclude the controller loops that are cloud provider dependent
+	//
+	// todo ExternalLoops 意味着 kube-controller-manager 排除依赖于云提供程序的控制器循环
 	ExternalLoops
 )
 
@@ -105,16 +110,21 @@ state of the cluster through the apiserver and makes changes attempting to move 
 current state towards the desired state. Examples of controllers that ship with
 Kubernetes today are the replication controller, endpoints controller, namespace
 controller, and serviceaccounts controller.`,
+
+		// Command 对象的回调函数
 		Run: func(cmd *cobra.Command, args []string) {
 			verflag.PrintAndExitIfRequested()
 			utilflag.PrintFlags(cmd.Flags())
 
+			// 返回所有已知的 controller 的 name
 			c, err := s.Config(KnownControllers(), ControllersDisabledByDefault.List())
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "%v\n", err)
 				os.Exit(1)
 			}
 
+
+			// todo 运行 Kube Controller Manager 的 Run() 方法
 			if err := Run(c.Complete(), wait.NeverStop); err != nil {
 				fmt.Fprintf(os.Stderr, "%v\n", err)
 				os.Exit(1)
@@ -123,6 +133,7 @@ controller, and serviceaccounts controller.`,
 	}
 
 	fs := cmd.Flags()
+	// todo 加载 Controller的命令行参数集
 	namedFlagSets := s.Flags(KnownControllers(), ControllersDisabledByDefault.List())
 	verflag.AddFlags(namedFlagSets.FlagSet("global"))
 	globalflag.AddGlobalFlags(namedFlagSets.FlagSet("global"), cmd.Name())
@@ -156,10 +167,17 @@ func ResyncPeriod(c *config.CompletedConfig) func() time.Duration {
 }
 
 // Run runs the KubeControllerManagerOptions.  This should never exit.
+//
+// 运行运行 `KubeControllerManagerOptions` 这永远都不会退出
 func Run(c *config.CompletedConfig, stopCh <-chan struct{}) error {
+
 	// To help debugging, immediately log version
+	//
+	// 为了帮助调试，请立即记录版本
 	klog.Infof("Version: %+v", version.Get())
 
+
+	// 读取配置信息
 	if cfgz, err := configz.New(ConfigzName); err == nil {
 		cfgz.Set(c.ComponentConfig)
 	} else {
@@ -167,6 +185,8 @@ func Run(c *config.CompletedConfig, stopCh <-chan struct{}) error {
 	}
 
 	// Setup any healthz checks we will want to use.
+	//
+	// 设置我们将要使用的所有healthz检查
 	var checks []healthz.HealthChecker
 	var electionChecker *leaderelection.HealthzAdaptor
 	if c.ComponentConfig.Generic.LeaderElection.LeaderElect {
@@ -231,17 +251,27 @@ func Run(c *config.CompletedConfig, stopCh <-chan struct{}) error {
 		}
 		saTokenControllerInitFunc := serviceAccountTokenControllerStarter{rootClientBuilder: rootClientBuilder}.startServiceAccountTokenController
 
+		// todo 启动各个 Controller
 		if err := StartControllers(controllerContext, saTokenControllerInitFunc, NewControllerInitializers(controllerContext.LoopMode), unsecuredMux); err != nil {
 			klog.Fatalf("error starting controllers: %v", err)
 		}
 
+		// todo
+		//		所有需要监控资源变化情况的调用均推荐使用 Informer
+		//		Informer 提供了基于事件通知的只读缓存机制，可以注册资源变化的回调函数，并可以极大减少 API 的调用
 		controllerContext.InformerFactory.Start(controllerContext.Stop)
 		controllerContext.ObjectOrMetadataInformerFactory.Start(controllerContext.Stop)
 		close(controllerContext.InformersStarted)
 
+		// 阻塞
 		select {}
 	}
 
+	// TODO
+	// 		在启动时设置 --leader-elect=true 后，controller manager 会使用多节点选主的方式选择主节点
+	// 		只有主节点才会调用 StartControllers() 启动所有控制器，而其他从节点则仅执行选主算法
+
+	// 如果不是主节点, 则 不启动各个 Controller
 	if !c.ComponentConfig.Generic.LeaderElection.LeaderElect {
 		run(context.TODO())
 		panic("unreachable")
@@ -268,13 +298,17 @@ func Run(c *config.CompletedConfig, stopCh <-chan struct{}) error {
 		klog.Fatalf("error creating lock: %v", err)
 	}
 
+
+	// 选举 主节点 (controller的主节点 ??)
 	leaderelection.RunOrDie(context.TODO(), leaderelection.LeaderElectionConfig{
 		Lock:          rl,
 		LeaseDuration: c.ComponentConfig.Generic.LeaderElection.LeaseDuration.Duration,
 		RenewDeadline: c.ComponentConfig.Generic.LeaderElection.RenewDeadline.Duration,
 		RetryPeriod:   c.ComponentConfig.Generic.LeaderElection.RetryPeriod.Duration,
+
+		// 选举回调,  只有主节点才会做 回调哦 (leaderelection.go中)
 		Callbacks: leaderelection.LeaderCallbacks{
-			OnStartedLeading: run,
+			OnStartedLeading: run, // 注册启动各个 Controller的 run()
 			OnStoppedLeading: func() {
 				klog.Fatalf("leaderelection lost")
 			},
@@ -303,6 +337,8 @@ type ControllerContext struct {
 	ObjectOrMetadataInformerFactory controller.InformerFactory
 
 	// ComponentConfig provides access to init options for a given controller
+	//
+	// ComponentConfig 提供对 给定控制器 的初始化选项的访问
 	ComponentConfig kubectrlmgrconfig.KubeControllerManagerConfiguration
 
 	// DeferredDiscoveryRESTMapper is a RESTMapper that will defer
@@ -336,6 +372,8 @@ type ControllerContext struct {
 }
 
 // IsControllerEnabled checks if the context's controllers enabled or not
+//
+// IsControllerEnabled 检查上下文的控制器 是否可以启用
 func (c ControllerContext) IsControllerEnabled(name string) bool {
 	return genericcontrollermanager.IsControllerEnabled(name, ControllersDisabledByDefault, c.ComponentConfig.Generic.Controllers)
 }
@@ -368,6 +406,10 @@ func KnownControllers() []string {
 }
 
 // ControllersDisabledByDefault is the set of controllers which is disabled by default
+//
+// todo ControllersDisabledByDefault 是默认情况下禁用的控制器集
+//
+// 之前启动各个 controller时，决定了 默认时 启动 还是 禁止的选项在这里
 var ControllersDisabledByDefault = sets.NewString(
 	"bootstrapsigner",
 	"tokencleaner",
@@ -391,44 +433,60 @@ func NewControllerInitializers(loopMode ControllerLoopMode) map[string]InitFunc 
 	// todo 收集所有 启动 各个  Controller 组件的 `startXxx`函数，
 	// todo 这些组件共同 组成了 `kube-controller-manager`
 
-	controllers["endpoint"] = startEndpointController
-	controllers["endpointslice"] = startEndpointSliceController
-	controllers["replicationcontroller"] = startReplicationController
-	controllers["podgc"] = startPodGCController
-	controllers["resourcequota"] = startResourceQuotaController
-	controllers["namespace"] = startNamespaceController
-	controllers["serviceaccount"] = startServiceAccountController
-	controllers["garbagecollector"] = startGarbageCollectorController
-	controllers["daemonset"] = startDaemonSetController
-	controllers["job"] = startJobController
-	controllers["deployment"] = startDeploymentController
-	controllers["replicaset"] = startReplicaSetController
-	controllers["horizontalpodautoscaling"] = startHPAController
-	controllers["disruption"] = startDisruptionController
-	controllers["statefulset"] = startStatefulSetController
-	controllers["cronjob"] = startCronJobController
-	controllers["csrsigning"] = startCSRSigningController
-	controllers["csrapproving"] = startCSRApprovingController
-	controllers["csrcleaner"] = startCSRCleanerController
-	controllers["ttl"] = startTTLController
-	controllers["bootstrapsigner"] = startBootstrapSignerController
-	controllers["tokencleaner"] = startTokenCleanerController
-	controllers["nodeipam"] = startNodeIpamController
-	controllers["nodelifecycle"] = startNodeLifecycleController
+	// todo kube-controller-manager 由一系列的控制器组成，这些控制器可以划分为三组
+	//		必须启动的 | 可选的(默认启动的) | 可选的(默认禁止的)
 
+	controllers["endpoint"] = startEndpointController							// 必须启动,  管理基于选择器的服务端点
+	controllers["endpointslice"] = startEndpointSliceController
+	controllers["replicationcontroller"] = startReplicationController			// 必须启动,  它只是ReplicaSetController的包装, 负责将系统中存储的ReplicationController对象与实际运行的Pod进行同步
+	controllers["podgc"] = startPodGCController									// 必须启动,  管理 pod 的资源回收 ??
+	controllers["resourcequota"] = startResourceQuotaController					// 必须启动,  负责跟踪系统中的配额使用状态
+	controllers["namespace"] = startNamespaceController							// 必须启动,  负责命名空间管理
+	controllers["serviceaccount"] = startServiceAccountController				// 必须启动,  Namespaces 中的 ServiceAccounts Controller Manager 服务帐户对象
+	controllers["garbagecollector"] = startGarbageCollectorController			// 必须启动,  负责系统资源回收
+	controllers["daemonset"] = startDaemonSetController							// 必须启动,  负责守护进程 集管理
+	controllers["job"] = startJobController										// 必须启动,  负责job作业管理
+	controllers["deployment"] = startDeploymentController						// 必须启动,  部署管理, 负责将系统中存储的Deployment对象与实际运行的副本集和Pod进行同步.
+	controllers["replicaset"] = startReplicaSetController						// 必须启动,  副本集管理, 负责将系统中存储的Replica Set对象与实际运行的Pod进行同步
+	controllers["horizontalpodautoscaling"] = startHPAController				// 必须启动,  资源[水平自动伸缩]管理, 根据 `CPU利用率` 调节 rc 和 deployment 和 rs等等
+	controllers["disruption"] = startDisruptionController						// 必须启动,  中断 控制器
+	controllers["statefulset"] = startStatefulSetController						// 必须启动,  有状态服务集控制器
+	controllers["cronjob"] = startCronJobController								// 必须启动,  定时任务控制器
+	controllers["csrsigning"] = startCSRSigningController						// 必须启动,  Certificate Signing Request,证书注册请求, CSR签名控制器
+	controllers["csrapproving"] = startCSRApprovingController					// 必须启动,  CSR批准控制器
+	controllers["csrcleaner"] = startCSRCleanerController						// 必须启动,  CSR旧证书回收(GC)控制器
+	controllers["ttl"] = startTTLController										// 必须启动,  Time To Live (存活时间)控制器
+
+
+	controllers["bootstrapsigner"] = startBootstrapSignerController				// 可选(默认禁止的), BootstrapSigner 控制器也会使用启动引导令牌为这类对象生成签名信息.
+	controllers["tokencleaner"] = startTokenCleanerController					// 可选(默认禁止的), TokenCleaner 控制器能够删除过期的 启动引导令牌
+	controllers["nodeipam"] = startNodeIpamController							//   主要处理Node的IPAM地址相关.
+	controllers["nodelifecycle"] = startNodeLifecycleController					//   处理Node的整个生命周期.
+
+	// todo IncludeCloudLoops 意味着 kube-controller-manager 包括依赖于云提供程序的控制器循环
 	if loopMode == IncludeCloudLoops {
-		controllers["service"] = startServiceController
-		controllers["route"] = startRouteController
-		controllers["cloud-node-lifecycle"] = startCloudNodeLifecycleController
+
+		// 在 Kubernetes 启用 Cloud Provider 的时候才需要，用来配合云服务提供商的控制，也包括一系列的控制器
+		//
+		// 属于 cloud-controller-manager
+
+		controllers["service"] = startServiceController								// 可选的(默认启动的), 管理 service 的控制器
+		controllers["route"] = startRouteController									// 可选的(默认启动的), 管理 route 的控制器 ??
+		controllers["cloud-node-lifecycle"] = startCloudNodeLifecycleController     // 管理 云节点 的生命周期 ??
 		// TODO: volume controller into the IncludeCloudLoops only set.
 	}
-	controllers["persistentvolume-binder"] = startPersistentVolumeBinderController
-	controllers["attachdetach"] = startAttachDetachController
-	controllers["persistentvolume-expander"] = startVolumeExpandController
-	controllers["clusterrole-aggregation"] = startClusterRoleAggregrationController
-	controllers["pvc-protection"] = startPVCProtectionController
-	controllers["pv-protection"] = startPVProtectionController
-	controllers["ttl-after-finished"] = startTTLAfterFinishedController
+
+
+	// 下面三个时和 存储相关的 controller
+	controllers["persistentvolume-binder"] = startPersistentVolumeBinderController  // 可选的(默认启动的), 就是PV Controller，主要负责pv和pvc的生命周期以及状态的切换
+	controllers["attachdetach"] = startAttachDetachController						// 可选的(默认启动的), 简称AD Controller，主要处理真实的与volume相关的操作
+	controllers["persistentvolume-expander"] = startVolumeExpandController			//                  主要负责volume的扩容操作
+
+
+	controllers["clusterrole-aggregation"] = startClusterRoleAggregrationController // 是用于组合集群角色的控制器.
+	controllers["pvc-protection"] = startPVCProtectionController				    // PVC 保护相关的 控制器
+	controllers["pv-protection"] = startPVProtectionController						// PV 保护相关的 控制器
+	controllers["ttl-after-finished"] = startTTLAfterFinishedController             // 用于在任务结束后, 让TTL控制器清理Pod和Jobs
 	controllers["root-ca-cert-publisher"] = startRootCACertPublisher
 
 	return controllers
@@ -515,9 +573,20 @@ func CreateControllerContext(s *config.CompletedConfig, rootClientBuilder, clien
 }
 
 // StartControllers starts a set of controllers with a specified ControllerContext
+//
+// StartControllers:
+//		使用指定的ControllerContext启动一组控制器
+//
+//
+// 在启动时设置 `--leader-elect=true` 后，controller manager 会使用多节点选主的方式选择主节点.
+// 只有主节点才会调用 StartControllers() 启动所有控制器，而其他从节点则仅执行选主算法.
 func StartControllers(ctx ControllerContext, startSATokenController InitFunc, controllers map[string]InitFunc, unsecuredMux *mux.PathRecorderMux) error {
+
 	// Always start the SA token controller first using a full-power client, since it needs to mint tokens for the rest
 	// If this fails, just return here and fail since other controllers won't be able to get credentials.
+	//
+	// 始终首先使用全功能客户端启动 SA (ServiceAccount) 令牌controller，因为它需要为 其余的 Controller 铸造令牌。
+	// 如果失败，则返回此处失败，因为其他控制器将无法获得凭据。
 	if _, _, err := startSATokenController(ctx); err != nil {
 		return err
 	}
@@ -528,24 +597,33 @@ func StartControllers(ctx ControllerContext, startSATokenController InitFunc, co
 		ctx.Cloud.Initialize(ctx.ClientBuilder, ctx.Stop)
 	}
 
+	// todo 逐个 启动 各个 controller
 	for controllerName, initFn := range controllers {
+
+		// 如果 不允许启用, 则跳过该 Controller
 		if !ctx.IsControllerEnabled(controllerName) {
 			klog.Warningf("%q is disabled", controllerName)
 			continue
 		}
 
+		// 休眠下 (抖动时间)
 		time.Sleep(wait.Jitter(ctx.ComponentConfig.Generic.ControllerStartInterval.Duration, ControllerStartJitter))
 
 		klog.V(1).Infof("Starting %q", controllerName)
+
+		/** todo 启动 Controller 了 */
 		debugHandler, started, err := initFn(ctx)
 		if err != nil {
 			klog.Errorf("Error starting %q", controllerName)
 			return err
 		}
+		// 如果启动不成功的话
 		if !started {
 			klog.Warningf("Skipping %q", controllerName)
 			continue
 		}
+
+		// debugger
 		if debugHandler != nil && unsecuredMux != nil {
 			basePath := "/debug/controllers/" + controllerName
 			unsecuredMux.UnlistedHandle(basePath, http.StripPrefix(basePath, debugHandler))
@@ -560,11 +638,33 @@ func StartControllers(ctx ControllerContext, startSATokenController InitFunc, co
 // serviceAccountTokenControllerStarter is special because it must run first to set up permissions for other controllers.
 // It cannot use the "normal" client builder, so it tracks its own. It must also avoid being included in the "normal"
 // init map so that it can always run first.
+//
+// todo serviceAccountTokenControllerStarter:
+//			【是特殊的，因为它必须首先运行才能为其他控制器设置权限。】
+//			它不能使用“常规”客户端构建器，因此它会跟踪其自身。
+//			它还必须避免包含在“常规”初始化 map 中，以便始终可以首先运行。
 type serviceAccountTokenControllerStarter struct {
 	rootClientBuilder controller.ControllerClientBuilder
 }
 
+
+// 用户帐户（User Account）和服务帐户（Service Account）
+//
+// 用户帐户为人提供账户标识，而服务账户为计算机进程和K8s集群中运行的Pod提供账户标识。
+//
+// 用户帐户和服务帐户的一个区别是作用范围；
+// todo
+// 		【用户帐户】对应的是人的身份，人的身份与服务的namespace无关，所以用户账户是跨namespace的；
+// 		【服务帐户】对应的是一个运行中程序的身份，与特定namespace是相关的。
+
+
+// 启动 ServiceAccountTokenController
+//
 func (c serviceAccountTokenControllerStarter) startServiceAccountTokenController(ctx ControllerContext) (http.Handler, bool, error) {
+
+	// 先检查下 ServiceAccountTokenController 是否可以启用
+	//
+	// 如果 不可以，则 结束
 	if !ctx.IsControllerEnabled(saTokenControllerName) {
 		klog.Warningf("%q is disabled", saTokenControllerName)
 		return nil, false, nil

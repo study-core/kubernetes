@@ -35,6 +35,10 @@ import (
 	"k8s.io/kubernetes/pkg/controller/certificates/authority"
 )
 
+
+// CSR: Certificate Signing Request,证书注册请求.
+//
+// CSR签名控制器 ??
 type CSRSigningController struct {
 	certificateController *certificates.CertificateController
 	dynamicCertReloader   dynamiccertificates.ControllerRunner

@@ -23,6 +23,10 @@ import (
 
 	"k8s.io/kubernetes/pkg/controller/bootstrap"
 )
+// BootstrapSigner 控制器也会使用启动引导令牌为这类对象生成签名信息
+//
+// todo 启动引导令牌 ?
+//  	被设计成, 通过RBAC(Role-Based Access Control)策略, 结合 Kubelet TLS Bootstrapping 系统进行工作.
 
 func startBootstrapSignerController(ctx ControllerContext) (http.Handler, bool, error) {
 	bsc, err := bootstrap.NewSigner(

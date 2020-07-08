@@ -40,6 +40,7 @@ import (
 	"k8s.io/kubernetes/pkg/controller"
 )
 
+// 证书 控制器
 type CertificateController struct {
 	// name is an identifier for this particular controller instance.
 	name string

@@ -351,6 +351,8 @@ const (
 	// alpha: v1.12
 	//
 	// Allow TTL controller to clean up Pods and Jobs after they finish.
+	//
+	// 结束后，让TTL控制器清理Pod和Jobs
 	TTLAfterFinished featuregate.Feature = "TTLAfterFinished"
 
 	// owner: @dashpole

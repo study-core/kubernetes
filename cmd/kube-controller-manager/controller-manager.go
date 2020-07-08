@@ -31,6 +31,10 @@ import (
 	"k8s.io/kubernetes/cmd/kube-controller-manager/app"
 )
 
+// Controller Manager
+// 由 kube-controller-manager 和 cloud-controller-manager 组成，
+// 是 Kubernetes 的大脑，它通过 apiserver 监控整个集群的状态，并确保集群处于预期的工作状态.
+
 // todo ControllerManager 组件的启动入口
 func main() {
 	// todo 设置全局的 随机种子

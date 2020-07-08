@@ -38,11 +38,19 @@ type ClientConnectionConfiguration struct {
 
 // LeaderElectionConfiguration defines the configuration of leader election
 // clients for components that can run with leader election enabled.
+//
+// LeaderElectionConfiguration: 定义可以在 `启用了 Leader 选举` 的情况下运行的组件的 Leader 选举客户端的配置.
 type LeaderElectionConfiguration struct {
+
 	// leaderElect enables a leader election client to gain leadership
 	// before executing the main loop. Enable this when running replicated
 	// components for high availability.
+	//
+	// LeaderElect: 使 Leader 选举客户可以在执行主循环之前获得 Leader 地位。
+	//              在运行复制的组件以实现高可用性时启用此功能。
 	LeaderElect bool
+
+
 	// leaseDuration is the duration that non-leader candidates will wait
 	// after observing a leadership renewal until attempting to acquire
 	// leadership of a led but unrenewed leader slot. This is effectively the

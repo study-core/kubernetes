@@ -102,7 +102,26 @@ type HorizontalController struct {
 	scaleDownEvents map[string][]timestampedScaleEvent
 }
 
+
+//  [ˌhɒrɪˈzɒntl]
+//  Horizontal
+//  水平的
+
+// Horizontal Pod Autoscaler: HPA
+//
+// 【水平自动伸缩】
+//
+// 可以根据 `CPU利用率` 自动伸缩 replication controller 或者 deployment 或者 replica set 中的Pod数量
+//（或者，通过 `自定义指标` 支持，根据其他一些应用程序提供的指标）。
+// 请注意，Horizontal Pod Autoscaling不适用于无法缩放的对象，例如DaemonSet。
+
+
+
 // NewHorizontalController creates a new HorizontalController.
+//
+// TODO 超级重要的一个 Controller：
+//		[水平控制器]
+// 		可以根据CPU利用率自动伸缩 replication controller (rc) 或者 deployment 或者 replica set (rs)中的Pod数量
 func NewHorizontalController(
 	evtNamespacer v1core.EventsGetter,
 	scaleNamespacer scaleclient.ScalesGetter,

@@ -28,10 +28,23 @@ type PersistentVolumeBinderControllerOptions struct {
 }
 
 // AddFlags adds flags related to PersistentVolumeBinderController for controller manager to the specified FlagSet.
+//
+// AddFlags:
+//     将与用于 ControllerManager 的 PersistentVolumeBinderController [连续卷绑定控制选项] 相关的标志添加到指定的FlagSet。
 func (o *PersistentVolumeBinderControllerOptions) AddFlags(fs *pflag.FlagSet) {
 	if o == nil {
 		return
 	}
+
+	// todo 持久存储卷（Persistent Volume，PV）和 持久存储卷声明（Persistent Volume Claim，PVC）
+	//
+	// todo PV和PVC使得K8s集群具备了存储的逻辑抽象能力，
+	//      使得在配置Pod的逻辑里可以忽略对实际后台存储技术的配置，
+	//      而把这项配置的工作交给PV的配置者，即集群的管理者。
+	//
+	// todo 存储的PV和PVC的这种关系，跟计算的Node和Pod的关系是非常类似的；
+	//      PV和Node是资源的提供者，根据集群的基础设施变化而变化，由K8s集群管理员配置；
+	//      而PVC和Pod是资源的使用者，根据业务服务的需求变化而变化，由K8s集群的使用者即服务的管理员来配置。
 
 	fs.DurationVar(&o.PVClaimBinderSyncPeriod.Duration, "pvclaimbinder-sync-period", o.PVClaimBinderSyncPeriod.Duration, "The period for syncing persistent volumes and persistent volume claims")
 	fs.StringVar(&o.VolumeConfiguration.PersistentVolumeRecyclerConfiguration.PodTemplateFilePathNFS, "pv-recycler-pod-template-filepath-nfs", o.VolumeConfiguration.PersistentVolumeRecyclerConfiguration.PodTemplateFilePathNFS, "The file path to a pod definition used as a template for NFS persistent volume recycling")

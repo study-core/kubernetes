@@ -126,6 +126,8 @@ func NewEndpointController(podInformer coreinformers.PodInformer, serviceInforme
 }
 
 // EndpointController manages selector-based service endpoints.
+//
+// EndpointController 管理基于选择器的服务端点。
 type EndpointController struct {
 	client           clientset.Interface
 	eventBroadcaster record.EventBroadcaster

@@ -373,6 +373,7 @@ func startVolumeExpandController(ctx ControllerContext) (http.Handler, bool, err
 	return nil, false, nil
 }
 
+// 必须启动,  管理基于选择器的服务端点
 func startEndpointController(ctx ControllerContext) (http.Handler, bool, error) {
 	go endpointcontroller.NewEndpointController(
 		ctx.InformerFactory.Core().V1().Pods(),
@@ -472,6 +473,7 @@ func startModifiedNamespaceController(ctx ControllerContext, namespaceKubeClient
 	return nil, true, nil
 }
 
+// 必须启动,   Namespaces 中的 ServiceAccounts Controller Manager 服务帐户对象
 func startServiceAccountController(ctx ControllerContext) (http.Handler, bool, error) {
 	sac, err := serviceaccountcontroller.NewServiceAccountsController(
 		ctx.InformerFactory.Core().V1().ServiceAccounts(),

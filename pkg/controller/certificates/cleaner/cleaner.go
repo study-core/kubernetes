@@ -59,6 +59,15 @@ const (
 // CSR is denied and is old enough to be past the GC denied deadline, the CSR
 // is Pending and is old enough to be past the GC pending deadline, the CSR is
 // approved with a certificate and the certificate is expired.
+//
+//
+// todo CSRCleanerController: 是一个控制器，可以垃圾收集旧的证书签名请求（CSR）。
+// 							  由于存在自动创建CSR的机制和自动批准CSR的机制，
+//							  为了防止CSR随着时间的推移而积累，因此有必要对其进行GC。
+//							  如果CSR满足以下条件之一，则将被删除：
+//							  CSR已获得证书的批准，并且其期限足以超过GC颁发的期限； 【过期的】
+//							  CSR被拒绝且其期限足以超过GC拒绝的期限； 			【被拒绝的】
+//							  CSR 是待定，并且其年龄足以超过GC的待定期限，CSR已通过证书批准，并且证书已过期。 【超过待定期的】
 type CSRCleanerController struct {
 	csrClient csrclient.CertificateSigningRequestInterface
 	csrLister certificateslisters.CertificateSigningRequestLister

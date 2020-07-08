@@ -183,6 +183,9 @@ func (f *sharedInformerFactory) InformerFor(obj runtime.Object, newFunc internal
 	return informer
 }
 
+// Informer 最基本 的功能就是 List/Get Kubernetes 中的 Object
+//
+//
 // SharedInformerFactory provides shared informers for resources in all known
 // API group versions.
 type SharedInformerFactory interface {

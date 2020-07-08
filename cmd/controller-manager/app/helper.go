@@ -57,22 +57,37 @@ func WaitForAPIServer(client clientset.Interface, timeout time.Duration) error {
 }
 
 // IsControllerEnabled check if a specified controller enabled or not.
+//
+// IsControllerEnabled 检查指定的控制器是否启用。
 func IsControllerEnabled(name string, disabledByDefaultControllers sets.String, controllers []string) bool {
+
+	// todo controllers 要 `启用` 或 `禁用`的控制器列表
+	//    '*'表示 “全部由默认控制器启用”
+	//    'foo' 是 “启用'foo'”
+	//    '-foo'是 “禁用'foo'”
+	//    特定名称的第一项获胜
+
 	hasStar := false
 	for _, ctrl := range controllers {
 		if ctrl == name {
 			return true
 		}
+
+		// 被禁用的
 		if ctrl == "-"+name {
 			return false
 		}
+
+		// 默认启动的
 		if ctrl == "*" {
 			hasStar = true
 		}
 	}
 	// if we get here, there was no explicit choice
+	//
+	// 如果我们到达这里，就没有明确的选择
 	if !hasStar {
-		// nothing on by default
+		// nothing on by default  不做任何事
 		return false
 	}
 

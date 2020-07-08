@@ -63,8 +63,24 @@ const (
 // controllerKind contains the schema.GroupVersionKind for this controller type.
 var controllerKind = apps.SchemeGroupVersion.WithKind("Deployment")
 
+
+// todo Deployment:
+// 		【部署】表示用户对K8s集群的一次更新操作。
+//		部署是一个比 RS <Replica Set 副本集> 应用模式更广的API对象，
+//		可以是创建一个新的服务，更新一个新的服务，也可以是滚动升级一个服务。
+//		滚动升级一个服务，实际是创建一个新的RS，
+//		然后逐渐将新RS中副本数增加到理想状态，
+//		将旧RS中的副本数减小到0的复合操作；
+//		这样一个复合操作用一个RS是不太好描述的，
+//		所以用一个更通用的Deployment来描述。
+//
+//		以K8s的发展方向，未来对所有[长期伺服型]的的业务的管理，
+//		都会通过Deployment来管理。
+
 // DeploymentController is responsible for synchronizing Deployment objects stored
 // in the system with actual running replica sets and pods.
+//
+// DeploymentController: 负责将系统中存储的Deployment对象与实际运行的副本集和Pod进行同步。
 type DeploymentController struct {
 	// rsControl is used for adopting/releasing replica sets.
 	rsControl     controller.RSControlInterface
