@@ -23,6 +23,7 @@ import (
 	runtimeapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 )
 
+// 目前是一个 空 struct
 type containerCleanupInfo struct{}
 
 // applyPlatformSpecificDockerConfig applies platform-specific configurations to a dockertypes.ContainerCreateConfig struct.

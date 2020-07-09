@@ -28,11 +28,15 @@ import (
 
 // instrumentedInterface wraps the Interface and records the operations
 // and errors metrics.
+//
+// instrumentedInterface 包装接口并记录操作和错误指标
 type instrumentedInterface struct {
 	client Interface
 }
 
 // NewInstrumentedInterface creates an instrumented Interface from an existing Interface.
+//
+// NewInstrumentedInterface从现有接口创建检测接口
 func NewInstrumentedInterface(dockerClient Interface) Interface {
 	return instrumentedInterface{
 		client: dockerClient,

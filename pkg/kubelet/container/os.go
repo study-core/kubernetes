@@ -25,6 +25,8 @@ import (
 
 // OSInterface collects system level operations that need to be mocked out
 // during tests.
+//
+// todo OSInterface: 收集测试期间需要模拟的系统级操作.
 type OSInterface interface {
 	MkdirAll(path string, perm os.FileMode) error
 	Symlink(oldname string, newname string) error

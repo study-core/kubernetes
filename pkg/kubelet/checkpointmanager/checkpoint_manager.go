@@ -53,6 +53,8 @@ type impl struct {
 }
 
 // NewCheckpointManager returns a new instance of a checkpoint manager
+//
+// NewCheckpointManager返回检查点管理器的新实例
 func NewCheckpointManager(checkpointDir string) (CheckpointManager, error) {
 	fstore, err := utilstore.NewFileStore(checkpointDir, utilfs.DefaultFs{})
 	if err != nil {

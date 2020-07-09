@@ -172,11 +172,14 @@ type ClientConfig struct {
 
 // NewDockerClientFromConfig create a docker client from given configure
 // return nil if nil configure is given.
+//
+// NewDockerClientFromConfig:
+//		从给定的configure创建一个docker客户端，如果给出nil configure，则返回nil。
 func NewDockerClientFromConfig(config *ClientConfig) libdocker.Interface {
 	if config != nil {
-		// Create docker client.
+		// Create docker client.   todo 创建 docker客户端, 并 封装成 k8s的docker 客户端并返回
 		client := libdocker.ConnectToDockerOrDie(
-			config.DockerEndpoint,
+			config.DockerEndpoint,         // 使用了 配置文件中的 DockerEndpoint 路径
 			config.RuntimeRequestTimeout,
 			config.ImagePullProgressDeadline,
 		)
@@ -188,39 +191,68 @@ func NewDockerClientFromConfig(config *ClientConfig) libdocker.Interface {
 
 // NewDockerService creates a new `DockerService` struct.
 // NOTE: Anything passed to DockerService should be eventually handled in another way when we switch to running the shim as a different process.
+//
+// NewDockerService:
+//       创建一个新的DockerService结构
+// todo 注意：当我们切换到将 shim 作为另一个进程运行时，传递给DockerService的所有内容最终都应以另一种方式处理。
 func NewDockerService(config *ClientConfig, podSandboxImage string, streamingConfig *streaming.Config, pluginSettings *NetworkPluginSettings,
 	cgroupsName string, kubeCgroupDriver string, dockershimRootDir string, startLocalStreamingServer bool) (DockerService, error) {
 
+
+	// todo cgroups: 其名称源自控制组群（control groups）的简写,
+	//  			是Linux内核的一个功能, 用来限制、控制 与 分离 一个进程组的资源（如CPU、内存、磁盘输入输出等）
+
+
+	// todo 创建 docker客户端, 并 封装成 k8s的docker 客户端并返回
+	//	使用配置文件中的 DockerEndpoint 路径
 	client := NewDockerClientFromConfig(config)
 
+	// 返回一个 记录操作和错误指标 的 Interface
 	c := libdocker.NewInstrumentedInterface(client)
 
+	// NewCheckpointManager返回检查点管理器的新实例 (checkpoint 实例)
 	checkpointManager, err := checkpointmanager.NewCheckpointManager(filepath.Join(dockershimRootDir, sandboxCheckpointDir))
 	if err != nil {
 		return nil, err
 	}
 
+	// TODO 创建一个  dockerService 实例
 	ds := &dockerService{
+		// 一个 Interface 实例
 		client:          c,
+		// 一个 container OS 操作实例
 		os:              kubecontainer.RealOS{},
+
+		// pod的沙盒运行环境的镜像
 		podSandboxImage: podSandboxImage,
 		streamingRuntime: &streamingRuntime{
 			client:      client,
 			execHandler: &NativeExecHandler{},
 		},
+
+		// 容器 manager 实例
 		containerManager:          cm.NewContainerManager(cgroupsName, client),
+		// checkpoint 实例
 		checkpointManager:         checkpointManager,
+		// 标识位, 指示dockershim是否应在localhost上启动 `流服务器`
 		startLocalStreamingServer: startLocalStreamingServer,
+		// 记录 pod的沙盒ID => 网络是否准备好标识位的 Map
 		networkReady:              make(map[string]bool),
+
+		// containerId => 删除容器后需要清理的`containerCleanupInfo`结构 （目前是一个 空 struct）
 		containerCleanupInfos:     make(map[string]*containerCleanupInfo),
 	}
 
 	// check docker version compatibility.
+	//
+	// 检查 docker 版本的兼容性
 	if err = ds.checkVersionCompatibility(); err != nil {
 		return nil, err
 	}
 
 	// create streaming server if configured.
+	//
+	// 如果 `streamingConfig` 不为空, 则根据 config 创建 stream server
 	if streamingConfig != nil {
 		var err error
 		ds.streamingServer, err = streaming.NewServer(*streamingConfig, ds.streamingRuntime)
@@ -229,15 +261,19 @@ func NewDockerService(config *ClientConfig, podSandboxImage string, streamingCon
 		}
 	}
 
-	// Determine the hairpin mode.
+	// Determine the hairpin mode.  确定发夹模式??
 	if err := effectiveHairpinMode(pluginSettings); err != nil {
 		// This is a non-recoverable error. Returning it up the callstack will just
 		// lead to retries of the same failure, so just fail hard.
+		//
+		// 这是不可恢复的错误. 将其返回到调用栈只会导致重试相同的失败, 因此只会导致失败.
 		return nil, err
 	}
 	klog.Infof("Hairpin mode set to %q", pluginSettings.HairpinMode)
 
 	// dockershim currently only supports CNI plugins.
+	//
+	// dockershim 当前仅支持CNI插件
 	pluginSettings.PluginBinDirs = cni.SplitDirs(pluginSettings.PluginBinDirString)
 	cniPlugins := cni.ProbeNetworkPlugins(pluginSettings.PluginConfDir, pluginSettings.PluginCacheDir, pluginSettings.PluginBinDirs)
 	cniPlugins = append(cniPlugins, kubenet.NewPlugin(pluginSettings.PluginBinDirs, pluginSettings.PluginCacheDir))
@@ -245,14 +281,22 @@ func NewDockerService(config *ClientConfig, podSandboxImage string, streamingCon
 		&namespaceGetter{ds},
 		&portMappingGetter{ds},
 	}
+
+	// 初始化 network 插件
 	plug, err := network.InitNetworkPlugin(cniPlugins, pluginSettings.PluginName, netHost, pluginSettings.HairpinMode, pluginSettings.NonMasqueradeCIDR, pluginSettings.MTU)
 	if err != nil {
 		return nil, fmt.Errorf("didn't find compatible CNI plugin with given settings %+v: %v", pluginSettings, err)
 	}
+
+	// 给 DockerService 追加 networkPluginManager
 	ds.network = network.NewPluginManager(plug)
 	klog.Infof("Docker cri networking managed by %v", plug.Name())
 
+	// 构建 cgroups 驱动
+	//
 	// NOTE: cgroup driver is only detectable in docker 1.11+
+	//
+	// 注意：cgroup驱动程序仅可在docker 1.11+中检测到
 	cgroupDriver := defaultCgroupDriver
 	dockerInfo, err := ds.client.Info()
 	klog.Infof("Docker Info: %+v", dockerInfo)
@@ -277,7 +321,7 @@ func NewDockerService(config *ClientConfig, podSandboxImage string, streamingCon
 		versionCacheTTL,
 	)
 
-	// Register prometheus metrics.
+	// Register prometheus metrics.   注册 prometheus metrics
 	metrics.Register()
 
 	return ds, nil
@@ -290,8 +334,10 @@ type dockerService struct {
 	streamingRuntime *streamingRuntime
 	streamingServer  streaming.Server
 
+	// network插件manager
 	network *network.PluginManager
 	// Map of podSandboxID :: network-is-ready
+	// 记录 pod的沙盒ID => 网络是否准备好标识位的 Map
 	networkReady     map[string]bool
 	networkReadyLock sync.Mutex
 
@@ -306,12 +352,18 @@ type dockerService struct {
 	versionCache *cache.ObjectCache
 	// startLocalStreamingServer indicates whether dockershim should start a
 	// streaming server on localhost.
+	//
+	// startLocalStreamingServer: 指示dockershim是否应在localhost上启动 `流服务器`
 	startLocalStreamingServer bool
 
 	// containerCleanupInfos maps container IDs to the `containerCleanupInfo` structs
 	// needed to clean up after containers have been removed.
 	// (see `applyPlatformSpecificDockerConfig` and `performPlatformSpecificContainerCleanup`
 	// methods for more info).
+	//
+	// containerCleanupInfos:
+	//			将 ContainerID 映射到删除容器后需要清理的`containerCleanupInfo`结构 （目前是一个 空 struct）。
+	//			（有关更多信息，请参见applyPlatformSpecificDockerConfig和performPlatformSpecificContainerCleanup方法）。
 	containerCleanupInfos map[string]*containerCleanupInfo
 }
 

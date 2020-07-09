@@ -149,17 +149,25 @@ HTTP server: The kubelet can also listen for HTTP and respond to a simple API
 		// so we do all our parsing manually in Run, below.
 		// DisableFlagParsing=true provides the full set of flags passed to the kubelet in the
 		// `args` arg to Run, without Cobra's interference.
+		//
+		// TODO
+		// 		Kubelet具有特殊的标志解析要求，以强制执行标志优先级规则，因此我们在下面的“运行”中手动进行所有解析。
+		// 		DisableFlagParsing = true 提供了传递给 `args` arg中的kubelet的完整标志集，以运行，而不会受到 cobra 的干扰。
 		DisableFlagParsing: true,
 
 		// Command 对象的回调函数
 		Run: func(cmd *cobra.Command, args []string) {
 			// initial flag parse, since we disable cobra's flag parsing
+			//
+			// 初始标志解析，因为我们禁用了 cobra 的标志解析
 			if err := cleanFlagSet.Parse(args); err != nil {
 				cmd.Usage()
 				klog.Fatal(err)
 			}
 
 			// check if there are non-flag arguments in the command line
+			//
+			// 检查命令行中是否有非标志参数
 			cmds := cleanFlagSet.Args()
 			if len(cmds) > 0 {
 				cmd.Usage()
@@ -171,6 +179,7 @@ HTTP server: The kubelet can also listen for HTTP and respond to a simple API
 			if err != nil {
 				klog.Fatal(`"help" flag is non-bool, programmer error, please correct`)
 			}
+
 			if help {
 				cmd.Help()
 				return
@@ -203,10 +212,16 @@ HTTP server: The kubelet can also listen for HTTP and respond to a simple API
 				// We must enforce flag precedence by re-parsing the command line into the new object.
 				// This is necessary to preserve backwards-compatibility across binary upgrades.
 				// See issue #56171 for more details.
+				//
+				// 我们必须通过将命令行重新解析到新对象中来强制执行标志优先级。
+				// 这对于保持二进制升级之间的向后兼容性是必要的。
+				// 有关更多详细信息，请参见问题＃56171。
 				if err := kubeletConfigFlagPrecedence(kubeletConfig, args); err != nil {
 					klog.Fatal(err)
 				}
 				// update feature gates based on new config
+				//
+				// 根据新配置更新功能门
 				if err := utilfeature.DefaultMutableFeatureGate.SetFromMap(kubeletConfig.FeatureGates); err != nil {
 					klog.Fatal(err)
 				}
@@ -214,11 +229,18 @@ HTTP server: The kubelet can also listen for HTTP and respond to a simple API
 
 			// We always validate the local configuration (command line + config file).
 			// This is the default "last-known-good" config for dynamic config, and must always remain valid.
+			//
+			// 我们始终会验证本地配置（命令行+配置文件）。
+			// 这是动态配置的默认“最后一个好的”配置，并且必须始终保持有效。
+
+			// 校验 k8s 的配置
 			if err := kubeletconfigvalidation.ValidateKubeletConfiguration(kubeletConfig); err != nil {
 				klog.Fatal(err)
 			}
 
 			// use dynamic kubelet config, if enabled
+			//
+			// 使用动态kubelet配置（如果启用）
 			var kubeletConfigController *dynamickubeletconfig.Controller
 			if dynamicConfigDir := kubeletFlags.DynamicConfigDir.Value(); len(dynamicConfigDir) > 0 {
 				var dynamicKubeletConfig *kubeletconfiginternal.KubeletConfiguration
@@ -228,16 +250,27 @@ HTTP server: The kubelet can also listen for HTTP and respond to a simple API
 						// so that we get a complete validation at the same point where we can decide to reject dynamic config.
 						// This fixes the flag-precedence component of issue #63305.
 						// See issue #56171 for general details on flag precedence.
+						//
+						//
+						// 在这里，我们在 Controller 的验证序列之前在Controller内部强制执行标志优先级，
+						// 以便在决定拒绝动态配置的同一点获得完整的验证。
+						//
+						// 这修复了问题＃63305的标志优先级组件。
+						// 有关标志优先级的一般详细信息，请参见问题＃56171。
 						return kubeletConfigFlagPrecedence(kc, args)
 					})
 				if err != nil {
 					klog.Fatal(err)
 				}
 				// If we should just use our existing, local config, the controller will return a nil config
+				//
+				// 如果只使用现有的本地配置，则控制器将返回nil配置
 				if dynamicKubeletConfig != nil {
 					kubeletConfig = dynamicKubeletConfig
 					// Note: flag precedence was already enforced in the controller, prior to validation,
 					// by our above transform function. Now we simply update feature gates from the new config.
+					//
+					// 注意：在验证之前， Controller 的标志优先级已经由我们上面的转换函数执行。 现在，我们只需从新配置中更新功能门即可。
 					if err := utilfeature.DefaultMutableFeatureGate.SetFromMap(kubeletConfig.FeatureGates); err != nil {
 						klog.Fatal(err)
 					}
@@ -245,25 +278,37 @@ HTTP server: The kubelet can also listen for HTTP and respond to a simple API
 			}
 
 			// construct a KubeletServer from kubeletFlags and kubeletConfig
+			//
+			// 构造 KubeletServer
 			kubeletServer := &options.KubeletServer{
 				KubeletFlags:         *kubeletFlags,
 				KubeletConfiguration: *kubeletConfig,
 			}
 
 			// use kubeletServer to construct the default KubeletDeps
+			//
+			// 构造 KubeletDeps
 			kubeletDeps, err := UnsecuredDependencies(kubeletServer, utilfeature.DefaultFeatureGate)
 			if err != nil {
 				klog.Fatal(err)
 			}
 
 			// add the kubelet config controller to kubeletDeps
+			//
+			// 往 KubeletDeps 添加 `kubeletConfigController`
 			kubeletDeps.KubeletConfigController = kubeletConfigController
 
 			// set up stopCh here in order to be reused by kubelet and docker shim
+			//
+			// 在这里设置stopCh以便kubelet和docker shim可以重用
 			stopCh := genericapiserver.SetupSignalHandler()
 
 			// start the experimental docker shim, if enabled
+			//
+			// 启动实验性 docker shim（如果已启用）  TODO 这个 if 满足时, 会阻塞在这里 下面的  Run() 不会被执行
 			if kubeletServer.KubeletFlags.ExperimentalDockershim {
+
+				// todo 这里面会去 启动 实验性docker 客户端
 				if err := RunDockershim(&kubeletServer.KubeletFlags, kubeletConfig, stopCh); err != nil {
 					klog.Fatal(err)
 				}
@@ -274,6 +319,8 @@ HTTP server: The kubelet can also listen for HTTP and respond to a simple API
 			//
 			// TODO 启动 kubelet 组件
 			klog.V(5).Infof("KubeletConfiguration: %#v", kubeletServer.KubeletConfiguration)
+
+			// todo 上面的 if 不满足时, 会执行到这里
 			if err := Run(kubeletServer, kubeletDeps, utilfeature.DefaultFeatureGate, stopCh); err != nil {
 				klog.Fatal(err)
 			}
@@ -1270,12 +1317,18 @@ func BootstrapKubeletConfigController(dynamicConfigDir string, transform dynamic
 	return kc, c, nil
 }
 
+
 // RunDockershim only starts the dockershim in current process. This is only used for cri validate testing purpose
-// TODO(random-liu): Move this to a separate binary.
+// TODO(random-liu): Move this to a separate binary. 将其移动到单独的二进制文件中。
+//
+// RunDockershim:
+//		仅在当前进程中启动 dockershim。 这仅用于cri <Container Runtime Interface> 验证测试目的
 func RunDockershim(f *options.KubeletFlags, c *kubeletconfiginternal.KubeletConfiguration, stopCh <-chan struct{}) error {
 	r := &f.ContainerRuntimeOptions
 
 	// Initialize docker client configuration.
+	//
+	// TODO 初始化Docker客户端配置
 	dockerClientConfig := &dockershim.ClientConfig{
 		DockerEndpoint:            r.DockerEndpoint,
 		RuntimeRequestTimeout:     c.RuntimeRequestTimeout.Duration,
@@ -1283,6 +1336,8 @@ func RunDockershim(f *options.KubeletFlags, c *kubeletconfiginternal.KubeletConf
 	}
 
 	// Initialize network plugin settings.
+	//
+	// 初始化 network插件 设置.
 	pluginSettings := dockershim.NetworkPluginSettings{
 		HairpinMode:        kubeletconfiginternal.HairpinMode(c.HairpinMode),
 		NonMasqueradeCIDR:  f.NonMasqueradeCIDR,
@@ -1294,8 +1349,13 @@ func RunDockershim(f *options.KubeletFlags, c *kubeletconfiginternal.KubeletConf
 	}
 
 	// Initialize streaming configuration. (Not using TLS now)
+	//
+	// 初始化 streaming 配置 (现在 不适用 TLS)
 	streamingConfig := &streaming.Config{
+
 		// Use a relative redirect (no scheme or host).
+		//
+		// 使用相对重定向（无方案或主机）
 		BaseURL:                         &url.URL{Path: "/cri/"},
 		StreamIdleTimeout:               c.StreamingConnectionIdleTimeout.Duration,
 		StreamCreationTimeout:           streaming.DefaultConfig.StreamCreationTimeout,
@@ -1304,6 +1364,10 @@ func RunDockershim(f *options.KubeletFlags, c *kubeletconfiginternal.KubeletConf
 	}
 
 	// Standalone dockershim will always start the local streaming server.
+	//
+	// 独立dockershim 将始终启动本地流服务器
+	//
+	// 创建 docker客户端 并封装一个 dockerService返回
 	ds, err := dockershim.NewDockerService(dockerClientConfig, r.PodSandboxImage, streamingConfig, &pluginSettings,
 		f.RuntimeCgroups, c.CgroupDriver, r.DockershimRootDirectory, true /*startLocalStreamingServer*/)
 	if err != nil {
@@ -1311,9 +1375,13 @@ func RunDockershim(f *options.KubeletFlags, c *kubeletconfiginternal.KubeletConf
 	}
 	klog.V(2).Infof("Starting the GRPC server for the docker CRI shim.")
 	server := dockerremote.NewDockerServer(f.RemoteRuntimeEndpoint, ds)
+
+	// 启动 DockerService (即： 里面启动了 docker 客户端)
 	if err := server.Start(); err != nil {
 		return err
 	}
+
+	// 监听 全局的 os.Signal 信号退出 chan
 	<-stopCh
 	return nil
 }

@@ -41,13 +41,26 @@ import (
 // kubeDockerClient is a wrapped layer of docker client for kubelet internal use. This layer is added to:
 //	1) Redirect stream for exec and attach operations.
 //	2) Wrap the context in this layer to make the Interface cleaner.
+//
+// kubeDockerClient: 是docker客户端的包装层, 供kubelet内部使用.该层添加到：
+// 1）重定向流以执行和附加操作.
+// 2）在该层中包装上下文以使接口更整洁.
 type kubeDockerClient struct {
 	// timeout is the timeout of short running docker operations.
+	//
+	// 超时是短期运行的docker操作的超时
 	timeout time.Duration
+
+
 	// If no pulling progress is made before imagePullProgressDeadline, the image pulling will be cancelled.
 	// Docker reports image progress for every 512kB block, so normally there shouldn't be too long interval
 	// between progress updates.
+	//
+	// 如果在 `imagePullProgressDeadline` 之前未完成拉取进度，则图像拉取将被取消。
+	// 		Docker报告每个512kB块的映像进度，因此通常进度更新之间的间隔不应太长。
 	imagePullProgressDeadline time.Duration
+
+	// docker 客户端的指针引用
 	client                    *dockerapi.Client
 }
 
@@ -64,6 +77,9 @@ const (
 	// defaultTimeout is the default timeout of short running docker operations.
 	// Value is slightly offset from 2 minutes to make timeouts due to this
 	// constant recognizable.
+	//
+	// defaultTimeout: 是短期运行的docker操作的默认超时时间。
+	// 				   由于此常数可识别，因此值会从2分钟稍微偏移以使超时。
 	defaultTimeout = 2*time.Minute - 1*time.Second
 
 	// defaultShmSize is the default ShmSize to use (in bytes) if not specified.
@@ -75,11 +91,16 @@ const (
 
 // newKubeDockerClient creates an kubeDockerClient from an existing docker client. If requestTimeout is 0,
 // defaultTimeout will be applied.
+//
+// newKubeDockerClient:
+//		从现有的Docker客户端创建一个kubeDockerClient. 如果requestTimeout为0, 则将应用defaultTimeout.
 func newKubeDockerClient(dockerClient *dockerapi.Client, requestTimeout, imagePullProgressDeadline time.Duration) Interface {
 	if requestTimeout == 0 {
-		requestTimeout = defaultTimeout
+		requestTimeout = defaultTimeout // 2*time.Minute - 1*time.Second
 	}
 
+
+	// kube的 docker实例封装
 	k := &kubeDockerClient{
 		client:                    dockerClient,
 		timeout:                   requestTimeout,
@@ -87,6 +108,8 @@ func newKubeDockerClient(dockerClient *dockerapi.Client, requestTimeout, imagePu
 	}
 
 	// Notice that this assumes that docker is running before kubelet is started.
+	//
+	// 请注意，这假设docker在启动kubelet之前正在运行。
 	ctx, cancel := k.getTimeoutContext()
 	defer cancel()
 	dockerClient.NegotiateAPIVersion(ctx)
@@ -610,6 +633,8 @@ func (d *kubeDockerClient) getCancelableContext() (context.Context, context.Canc
 }
 
 // getTimeoutContext returns a new context with default request timeout
+//
+// getTimeoutContext: 返回具有默认请求超时的新上下文
 func (d *kubeDockerClient) getTimeoutContext() (context.Context, context.CancelFunc) {
 	return context.WithTimeout(context.Background(), d.timeout)
 }

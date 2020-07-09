@@ -41,6 +41,8 @@ const (
 )
 
 // Interface is an abstract interface for testability.  It abstracts the interface of docker client.
+//
+// 接口是可测试性的抽象接口。 它抽象了Docker客户端的接口
 type Interface interface {
 	ListContainers(options dockertypes.ContainerListOptions) ([]dockertypes.Container, error)
 	InspectContainer(id string) (*dockertypes.ContainerJSON, error)
@@ -70,11 +72,24 @@ type Interface interface {
 
 // Get a *dockerapi.Client, either using the endpoint passed in, or using
 // DOCKER_HOST, DOCKER_TLS_VERIFY, and DOCKER_CERT path per their spec
+//
+// 根据传入的 endpoint 或使用其规范的`DOCKER_HOST`, `DOCKER_TLS_VERIFY`, 和 `DOCKER_CERT` 路径获取一个* dockerapi.Client
 func getDockerClient(dockerEndpoint string) (*dockerapi.Client, error) {
 	if len(dockerEndpoint) > 0 {
 		klog.Infof("Connecting to docker on %s", dockerEndpoint)
+
+		// NewClient为给定的主机和API版本初始化一个新的API客户端。
+		//它使用给定的http客户端作为传输。
+		//它还初始化要添加到每个请求的自定义http标头。
+		//
+		//如果版本号为空，则不会发送任何版本信息。 强烈建议您设置版本，否则如果升级服务器，客户端可能会损坏。
+		//不推荐使用：使用NewClientWithOpts
+		//
+		// todo 这里 直接调用 Docker 的 方法
 		return dockerapi.NewClient(dockerEndpoint, "", nil, nil)
 	}
+
+	// 使用默认的配置
 	return dockerapi.NewClientWithOpts(dockerapi.FromEnv)
 }
 
@@ -84,11 +99,25 @@ func getDockerClient(dockerEndpoint string) (*dockerapi.Client, error) {
 // is the timeout for docker requests. If timeout is exceeded, the request
 // will be cancelled and throw out an error. If requestTimeout is 0, a default
 // value will be applied.
+//
+//
+// ConnectToDockerOrDie:
+//		创建连接到Docker守护程序的Docker客户端。
+//
+//	如果传入的端点是 "fake：//", 则将返回伪造的Docker客户端.
+//	如果发生错误, 程序将退出.
+//	requestTimeout是docker请求的超时.
+//	如果超过了超时, 该请求将被取消并抛出错误.
+//	如果requestTimeout为0, 则将应用默认值.
 func ConnectToDockerOrDie(dockerEndpoint string, requestTimeout, imagePullProgressDeadline time.Duration) Interface {
+
+	// 根据 dockerEndpoint 记录的路径加载一个 docker 客户端
 	client, err := getDockerClient(dockerEndpoint)
 	if err != nil {
 		klog.Fatalf("Couldn't connect to docker: %v", err)
 	}
 	klog.Infof("Start docker client with request timeout=%v", requestTimeout)
+
+	// 根据 Docker 客户端 实例化一个 k8s的docker客户端
 	return newKubeDockerClient(client, requestTimeout, imagePullProgressDeadline)
 }
